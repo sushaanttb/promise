@@ -26,24 +26,27 @@ ToDo:Revisit on this post covering basic flow of then() & constructor.
 "If x is a thenable, it attempts to make promise adopt the state of x"
 
 Q: Adopting the state is understandable if its' a promise, but if it's simply a thenable(i.e. object with then function) 
-then most probably that is all it would have, i.e. no state vars only a  then function, so how to deduce it's state in that case? 
+then most probably that is all it would have, i.e. no state vars only a "then" function, so how to deduce it's state in that case? 
 Maybe the next line "under the assumption that x behaves at least somewhat like a promise." is on the same lines. 
-ie. we can only adopt it's state if it's a promise(a thenable)! but what do if it's not a promise? ToDo: Refer 2.3.3
+ie. we can only adopt it's state if it's a promise(a thenable)! but what to do if it's not a promise? ToDo: Refer 2.3.3
 
-Steps:
-2.3.1 if x===promise ->  Reject with TypeError most probably in order to avoid infinite recursion.
-2.3.2 else if x is a promise -> adopt
-2.3.3 else if x is object/fn -> {
-		//if x is object
-			retrieve-> x.then 
-			  // if Successfully retrieved with value v, resolve(v)->promise
-			  // if Error with reason e, reject(e)->promise
+[[Resolve]](promise,x) Steps:
+i.e. promise gets input x
+2.3.1 if x===promise ->  Reject with TypeError
+2.3.2 else if x is a typeOf promise -> adopt
+2.3.3 else if x is a typeOf object/fn -> {
+		//if x is object & "then" is a property
+			retrieve x.then 
+			  // if Error e while retrieving, reject(e)->promise
+			  // if Successfully retrieved with value v, resolve(v)->promise (Assumption, not part of spec step)
+		
 		//if x is function which further contains "then" function
-		        call-> x.then with this=x & it's own new set of (onRResolved,onRRejected) callbacks as 1st and 2nd args
-			// so when, onRResolved is called with value v, resolve(v)->promise
-			// & when onRRejected is called with reason e, reject(e)->promise
-			// ignore any subsequent calls to onRResolved & onRRejected 
-			
+		        call x.then() 
+			with this=x & (resolvePromise,rejectPromise) callbacks as 1st and 2nd args
+			// so when, resolvePromise is called with value v, then [[Resolve]](promise,v)
+			// & when rejectPromise is called with reason e, reject promise with reason e
+			// ignore any subsequent calls to resolvePromise & rejectPromise
+			Q: From where does (resolvePromise,rejectPromise) come from & how do they get invoked?
       }
 2.3.4 else -> fulfill promise with x // We'll start the pseudo-code from here, being the simplest of all
 
@@ -99,9 +102,57 @@ reject(reason){
 }
 
 
+//Attemp#2 something like..
 
+Promise{
+  
+  onFulfillArr=[];
+  onRejectArr=[];
+  status=0;
+  value;
+  reason;
+  
+  promiseArr=[];
 
-
+  //takes a function def. with resolve,reject as args name
+  Promise(f){
+    f();//executes that fn , assuming it calls the resolve,reject internally accordingly.
+  }
+  
+  resolve(v){
+    status=1;
+    value=v;
+    
+    onFulfillArr[0](v); 
+    //Case 1: when v is a simple value
+    //Now, we would like to do something like promise.resolve(onFulfillArr[0](v))
+    //on the promise we returned in then() method. 
+    //how does this hooks with that promise value?
+    
+    //1 way if we store ref. of all the promises we are creating in then
+    //promiseArr[0].then(onFulfillArr[0](v)); //??? This doesn't looks cool also, then won't do anything apart from registering the callback
+   // main challenge is in thinking about it's executor at the first place when returning from then()
+    
+    //Case 2: when v is object/promise case..
+    // we apply promise resolution procedure steps [[Resolve]](promise,v)
+    
+  }
+  reject(r){
+    status=2;
+    reason=r;
+    
+    onRejectArr[0](r);
+  }
+  
+  Promise then(onFulfill,onReject){
+    if(onFulfill typeOf function) onFulfillArr = [ ...onFulfillArr, onFulfill];
+    if(onReject typeOf function) onRejectArr =[...onRejectArr , onReject];
+    
+    return Promise(f(onResolve,onReject){
+                   		
+                   }); // ??? 
+    //not sure on this!! what would be it's correct executor fn like?
+  }
 
 
 
