@@ -1,0 +1,88 @@
+Promise A+ Spec-Analysis & Pseudo Code formulation :
+
+Spec URL:https://promisesaplus.com/
+
+A) Analysis:
+
+2.2 The "then" model:
+
+"2.2.6 then may be called multiple times on the same promise.
+If/when promise is fulfilled, all respective onFulfilled callbacks must execute in the order of their originating calls to then.
+If/when promise is rejected, all respective onRejected callbacks must execute in the order of their originating calls to then"
+
+"2.2.7 then must return a promise ..."
+
+Q: From 2.2.6, if then is called multiple times on same promise, then From 2.2.7, doesn't that means we are creating new promise everytime,
+since then returns a promise as well,apart from registering callbacks? 
+So didn't quite get from 2.2.6,"all respective onFulfilled callbacks must execute in the order of their originating calls" completely
+i.e. for 2.2.6 to make sense, there should be an internal array/queue as well for each promise for registering all the then callballbacks in order.
+If that is the case, what value does the new promise (or promises?) returned gets, how it's get evaluated based on all these different callbacks [onResolve1,onResolve2..]?
+does that means it gets resolved in sequence?
+
+
+
+
+
+
+
+
+B) Pseudo-Code :
+
+onFulfilledArray:[]
+onRejectedArray:[]
+
+Promise then(onFulfilled, onRejected){
+	if(onFulfilled typeOf function) onFulFilledArray.add(onFulfilled)
+	if(onRejected typeOf function) onRejectedArray.add(onRejected)
+
+	??? how to return new promise since it needs to be returned immediately
+	??? return new Promise(executor)
+
+	//noob attempt..
+	return new Promise(function(resolve,reject){
+		resolve(onFulfilled) ???
+		reject(onRejected) ???
+	});	
+	
+}
+
+/*other important fns which will be required,not covered in spec*/
+constructor()
+resolve()
+reject()
+private vars like: status=PENDING,value=undefined,reason=undefined
+
+
+
+Promise(executor){
+	//when executor completes, call:
+	//if Success
+		-- set value
+		-- call resolve(value) 
+
+	//if Error
+		-- set reason
+		-- call reject(reason) 
+}
+
+resolve(value){
+	-- changes status to FULFILLED	
+	-- calls onFulfilledArray[0]
+}
+
+reject(reason){
+	-- changes status to REJECTED 
+	-- calls onRejectedArray[0]
+}
+
+
+
+
+
+
+
+
+
+
+
+
