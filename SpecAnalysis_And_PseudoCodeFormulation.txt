@@ -171,7 +171,6 @@ reason="TypeError";
 //THIS is it!! & I was not aware about this technique at all(duh!). 
 
 // So, In this example, we are using a function to wrap our promise so that it does not execute immediately. 
-//// & also playing on code, checking the syntax of es6 from IDE and trying out on code rather than on paper, helped
 //make it a function to evaluate the same on-demand i.e. when values are passed
 var p = (value,reason) => new Promise(function( resolve,reject){
                                   if(value) resolve("I'm resolved with value: " + value);
