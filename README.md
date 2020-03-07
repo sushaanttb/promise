@@ -1,2 +1,3 @@
 # promise
-Implementing Promise based on Promise A+ spec
+A simple Promise implementation based on Promise A+spec
+https://promisesaplus.com/
