@@ -163,7 +163,7 @@ class TestPromise{
 
       // Where the Magic happens!
       //It's created as a function, so that it can be invoked ON-DEMAND with the values
-      let newPromise = (res,rej) => new TestPromise(function(resolve,reject){
+      const newPromise = (res,rej) => new TestPromise(function(resolve,reject){
           if(res) resolve(res);
           else reject(rej);
       })
@@ -218,4 +218,25 @@ class TestPromise{
     return newPromise;
   }
 
+  //Test suite Adapter requirements
+  resolved(value){
+    return new TestPromise((resolve,reject) => resolve(value));
+  }
+
+  rejected(reason){
+    return new TestPromise((resolve,reject) => reject(reason));
+  }
+
+  deferred(){
+    const newPromise = (res,rej) => new TestPromise(function(resolve,reject){
+        if(res) resolve(res);
+        else reject(rej);
+    });
+    
+    return {
+        'promise': newPromise,
+        'resolve': this.resolve(this.value),
+        'reject': this.reject(this.reason)
+    }
+  }
 }
