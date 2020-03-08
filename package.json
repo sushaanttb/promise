@@ -4,11 +4,14 @@
   "description": "",
   "main": "testPromise.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "promises-aplus-tests": "^2.1.2"
+  },
+  "devDependencies": {
+    "mocha": "^7.1.0"
   }
 }
