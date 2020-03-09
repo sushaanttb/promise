@@ -53,7 +53,9 @@ class TestPromise{
                
                 // Major ToDo:: this is DIFFERENT from our understanding from the then model till now (Spec 2.2.7.1) i.e. even if our rejectedCallback gets called successfully
                 // we still resolve the promise, but in this scenario, we are rejecting it!
-               
+                // A: resolved, refer then's function comments
+                // using below syntax, the current's promise status will be same as that of result's, resolution for next promises in chain will depend
+                // based on if there rejection callbacks executed successfully.
                 */
 
                result.then((v) => correspondingPromise(v,null),
@@ -61,31 +63,23 @@ class TestPromise{
             } 
 
             else if(typeof result == 'object'){ // an object or a 'thenable'
-                //if result has property then
+                
                 if(result.hasOwnProperty('then')){
                     let thenProperty = result.then;
 
                     if(typeof thenProperty == 'function'){
-                       /* ToDo: to call it with it's this=result,although I believe it should be fine since by def. of it ,it is result.then 
-                        to call it with 1st arg: resolvePromise & 2nd arg: rejectPromise
-                        i.e. then(resolvePromise, rejectPromise)
-                        such that if resolvePromise is called with value y, we resolve the corresponding promise with value y
-                        if rejectPromise is called with reason r, we reject the promise with r
-                       */
+                       // ToDo: to call it with it's this=result,although I believe it should be fine since by def. of it ,it is result.then 
                        
                        let invocationCnt = 0;
                        const resolvePromise = (y) => {
-                         if(invocationCnt++ > 0) return; //oncifying attempt using closure : NEEDS to be tested.
+                       if(invocationCnt++ > 0) return; //oncifying attempt using closure : NEEDS to be tested.
                          
                            try{
-                              correspondingPromise(y,null);
+                             correspondingPromise(y,null); // <-- fulfill
                            }catch(error){
                              correspondingPromise(null,error); // <-- reject with error
                            }
                         }
-
-                       //Major ToDo :: this is DIFFERENT from our understanding till now (Spec 2.2.7.1) i.e. even if our rejectCallback gets called successfully
-                       // we still resolve the promise, but in this scenario, we are rejecting it!
 
                        const rejectPromise = (r) => {
                          if(invocationCnt++ > 0) return;
@@ -142,26 +136,14 @@ class TestPromise{
             continue;
           };
 
-          try{
-            
+          try{      
             //ToDo:: to wait until execution stack is empty!!
             //Approach : by submitting it in using microtaskqueue?
 
-            //Invoke the callback with the rsn param received
             let result = currentRejectCallback(rsn);
-            
-            //Q: can rejection result further be a Promise or thenable?
-            //A: Although doesn't sounds much apt, but even if it is, it will get resolved using the Promise resolution procedure
-            //as we are resolving the promise even if our rejection callback executed successfull
-
-            /* Major ToDo :: Currently this is coded as per understanding from then model of Spec 2.2.7.1 
-            //To check in this again, i.e. if it should be otherwise like correspondingPromise(null,result);
-            // & if above is the case then how it will handle if result is a promise or thenable?
-            */
-            correspondingPromise(result,null);
-           
+            correspondingPromise(result,null); //<-- resolve the corresponding promise with result value
           }catch(error){
-            correspondingPromise(null,error);
+            correspondingPromise(null,error); //<-- reject the corresponding promise with error value
           }finally{
              //cleanup of registered callbacks and promises
              this.onRejectedCallbacks.shift(); // or splice(1,i)??
@@ -185,21 +167,18 @@ class TestPromise{
       })
       this.registeredPromises.push(newPromise);
 
-      // i.e. If our promise has already fulfilled/rejected & we can entertain it immediately
-      // based on our value/reason   
       if(status!='PENDING') {
-            
-        try{
             //ToDo:: to call onFulfilled/onRejected only when execution call stack contains platform code
             //Approach : By submitting it in microtask queue?
 
             //ToDo: onFulfilled/onRejected must be called as functions without 'this'
             //Approach : using strict as first line? also what about the this I'm using here for the sake of clarity?
 
-            //From 2.2.7.1 :: If either onFulfilled or onRejected returns a value x, run the Promise Resolution Procedure [[Resolve]](promise2, x)
+        //From 2.2.7.1 :: If either onFulfilled or onRejected returns a value x, run the Promise Resolution Procedure [[Resolve]](promise2, x)           
+        try{
             let x;
 
-            if(this.value) {
+            if(status=='FULFILLED') { //since value can be undefined
               if(!onFulfilled || typeof onFulfilled == 'function') x = onFulfilled(this.value);
               else x= this.value;
               
@@ -209,21 +188,21 @@ class TestPromise{
               if(!onRejected || typeof onRejected == 'function') {
                 x = onRejected(this.reason);
                 
-                //From 2.2.7.1:: thus, if our original promise got rejected and our 'onRejected' callback provided was a valid callback
+                //From 2.2.7.1:: i.e if our root promise got rejected and the 'onRejected' callback was valid callback
                 // we resolve the new promise.
                 newPromise(x,null);// <-- this will run it's own resolve() i.e.'promise resolution procedure' accordingly
               }else{
-                //if our original promise got rejected and our 'onRejected' callback provided as argument was invalid
+                //if our root promise got rejected and our 'onRejected' callback provided was invalid
                 //we reject the new promise.
                 newPromise(null,this.reason);
               }
            }
-            /* Major ToDo::: From 2.2.7.1, It's like saying to the root promise: "hey, these are my onFulfilled/OnRejected callbacks in case you 
+            /* From 2.2.7.1, It's like saying to the root promise: "hey, these are my onFulfilled/OnRejected callbacks in case you 
               happen to get fulfilled or rejected & any of my callback gets executed successfully, I'm fulfilled." 
-            
-              But!!!! : Based on 2.3.2.2 && 2.3.2.3: It's not same
-              
+             
+              Major ToDo::: But!!!! : Based on 2.3.2.2 && 2.3.2.3: It's not same
               Is it that I am misuderstanding the Promise Resolution Procedure [[Resolve]](promise2, x) such that it actually doesn't means calling resolve()?
+              A: Ignore, As further checked from the Promise.then() MDN docs, the 1st approach i.e. code above is fine
             */
 
         }catch(error){
