@@ -200,25 +200,6 @@ class TestPromise{
            }
     }
 
-    //Test suite Adapter requirements(currently based on assumption,will be verified during tests)
-    resolved(value){
-      return new TestPromise((resolve,reject) => resolve(value));
-    }
-
-    rejected(reason){
-      return new TestPromise((resolve,reject) => reject(reason));
-    }
-
-    deferred(){
-      const newPromise = (res,rej) => new TestPromise(function(resolve,reject){
-          if(res) resolve(res);
-          else reject(rej);
-      });
-      
-      return {
-          'promise': newPromise,
-          'resolve': this.resolve,
-          'reject': this.reject
-      }
-    }
 }
+
+module.exports = TestPromise;
