@@ -104,47 +104,54 @@ class TestPromise{
 
     genericDeduce(x,resolutionType){
         //From spec 2.3, as per promise resolution procedure 
+        try{
+                if(x instanceof TestPromise) x.then((v)=>resolve(v), (r) => reject(r)); //<-- adopting it's state
 
-        if(x instanceof TestPromise){
-            x.then((v)=>resolve(v), (r) => reject(r)); //<-- adopting it's state
-        }
-        else if(typeof x == 'object'){
-             
-             if(x.hasOwnProperty('then')){
-                let thenProperty = x.then;
-                
-                if(typeof thenProperty == 'function'){
-                    //ToDo: to call it with this=x
-                    //A: Although I believe it should be fine since by def. of it ,it is already val.then 
-                       
-                   let invocationCnt = 0;
-                   const resolvePromise = (y) => {
-                     if(invocationCnt++ > 0) return; //oncifying attempt using closure : NEEDS to be tested.    
-                         try{
-                           resolve(y,null); // <-- fulfill
-                         }catch(error){
-                           reject(null,error); // <-- reject with error
-                         }
-                    }
-                   const rejectPromise = (r) => {
-                     if(invocationCnt++ > 0) return; //oncifying attempt using closure : NEEDS to be tested.
-                       try{
-                           reject(null,r); // <-- reject with reason
-                       }catch(error){
-                           reject(null,error); // <-- reject with error
-                       }
-                    }
+                else if(typeof x == 'object'){
 
-                    thenProperty(resolvePromise,rejectPromise);
-                }else{ // i.e. if it has a then property but it is not a function
-                  updatePromiseStatus(x,resolutionType);
+                     if(x.hasOwnProperty('then')){
+                        let thenProperty = x.then;
+
+                        if(typeof thenProperty == 'function'){
+                            //ToDo: to call it with this=x
+                            //A: Although I believe it should be fine since by def. of it ,it is already val.then 
+
+                           let invocationCnt = 0;
+                           const resolvePromise = (y) => {
+                             if(invocationCnt++ >0) return; //oncifying attempt using closure : NEEDS to be tested.    
+                                 try{
+                                   resolve(y,null); // <-- fulfill
+                                 }catch(error){
+                                   reject(null,error); // <-- reject with error
+                                 }
+                            }
+                           const rejectPromise = (r) => {
+                             if(invocationCnt++ >0) return; //oncifying attempt using closure : NEEDS to be tested.
+                               try{
+                                   reject(null,r); // <-- reject with reason
+                               }catch(error){
+                                   reject(null,error); // <-- reject with error
+                               }
+                            }
+                            // TODO: when resolvePromise & rejectPromise are called at same time,ignored 2nd invocation
+                           // A: although I believe the above oncify attempt & also the status checks in resolve/reject should do the
+                           // trick, still there can be a race condition and it would be great if they can work on a common
+                           // invocationCnt variable.
+                           
+                            thenProperty(resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
+                            
+                        }else{ // i.e. if it has a then property but it is not a function
+                          updatePromiseStatus(x,resolutionType);
+                        }
+                     }else{// **** OUT OF SPEC  but a valid case if it has no then property! ****
+                       updatePromiseStatus(x,resolutionType);
+                     }       
                 }
-             }else{// **** OUT OF SPEC  but a valid case if it has no then property! ****
-               updatePromiseStatus(x,resolutionType);
-             }       
-        }
-        else{
-          updatePromiseStatus(x,resolutionType);     
+                else{
+                  updatePromiseStatus(x,resolutionType);     
+                }
+        }catch(error){
+            reject(null,error);
         }
     }
 
