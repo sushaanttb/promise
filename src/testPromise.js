@@ -162,25 +162,26 @@ class TestPromise{
     }
 
     resolveCallbacks(){
-         for(let i=0; i<onFulfilledCallbacks.length(); i++){
+         for(let i=0; i<registeredPromises.length(); i++){
         
-              let currentFulfillCallback = onFulfilledCallbacks[i];
               let correspondingPromise = registeredPromises[i];
-              let currentRejectCallback = this.onRejectedCallbacks[i];
+ 
+              let currentFulfillCallback = onFulfilledCallbacks[i];
+              let currentRejectCallback = onRejectedCallbacks[i];
            
               try{
                 
-                if(this.status=='FULFILLED' && (!currentFulfillCallback || typeof currentFulfillCallback != 'function')) {
-                      correspondingPromise(this.value,null);// <-- fulfill the corresponding promise with the value directly(2.2.7.3)
-                }else if(this.status=='REJECTED' && (!currentRejectCallback || typeof currentRejectCallback !='function')) {
-                      correspondingPromise(null,this.reason); // <-- reject the corresponding promise with reason directly(2.2.7.4)
-                }else{
-                //ToDo:: to wait until execution stack is empty!!
-                //Approach : by submitting it in using microtaskqueue?
-                  let result;
-                  this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));
-                  correspondingPromise(result,null);// <-- fulfill the corresponding promise based on it's callback value
-               }
+                    if(this.status=='FULFILLED' && (!currentFulfillCallback || typeof currentFulfillCallback != 'function')) {
+                          correspondingPromise(this.value,null);// <-- fulfill the corresponding promise with the value directly(2.2.7.3)
+                    }else if(this.status=='REJECTED' && (!currentRejectCallback || typeof currentRejectCallback !='function')) {
+                          correspondingPromise(null,this.reason); // <-- reject the corresponding promise with reason directly(2.2.7.4)
+                    }else{
+                      //ToDo:: When invoking any callback: to wait until execution stack is empty!!
+                      //Approach : by submitting it in using microtaskqueue?
+                      let result;
+                      this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));
+                      correspondingPromise(result,null);// <-- fulfill the corresponding promise based on it's callback value since callback executed successfully
+                   }
               }catch(error){
                  correspondingPromise(null,error);// <-- reject if any error
               }finally{
