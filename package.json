@@ -4,7 +4,7 @@
   "description": "",
   "main": "testPromise.js",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha && promises-aplus-tests test/my-adapter.js"
   },
   "author": "",
   "license": "ISC",
