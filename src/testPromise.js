@@ -22,6 +22,7 @@ class TestPromise{
       if (val===this) return reject(TypeError); //(From the Spec,2.3.1)
 
       genericDeduce(val,'fulfill');
+      
       //since this.value can be undefined
       if(this.status=='FULFILLED') resolveCallbacks();
 
@@ -148,12 +149,15 @@ class TestPromise{
     }
 
     updatePromiseStatus(x,resolutionType){
+      
+      if(this.status=='FULFILLED' || this.status=='REJECTED') return;
+        
       if(resolutionType=='fulfill'){
          this.status='FULFILLED';
          this.value = x;
       }else{
          this.status='REJECTED';
-         this.vreason = x;
+         this.reason = x;
       }
     }
 
