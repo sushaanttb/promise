@@ -1,11 +1,12 @@
-'use strict';
+"use strict";
 
-class TestPromise{
+module.exports = class TestPromise{
 
     status='PENDING'; //PENDING,FULFILLED,REJECTED
     value;
     reason;
 
+    deferreds = new Array();
     onFulfilledCallbacks = new Array();
     onRejectedCallbacks = new Array();
     registeredPromises = new Array();
@@ -13,7 +14,9 @@ class TestPromise{
     //where f is a function with 2 args : resolve/reject
     //def. of how resolve/reject works will be provided from client
     //ToDo:: need to confirm the syntax here,should be inline & also the constructor body if reqd.
-    constructor(f){}
+    constructor(resolver){
+      // if(!resolver || typeof resolver == 'function') throw TypeError("Promise resolver is not a function!");
+    }
 
     //ToDo:: to make it private
     resolve(val){
@@ -41,65 +44,6 @@ class TestPromise{
       //since this.reason can be undefined
       if(this.status=='REJECTED') resolveCallbacks();
       
-    }
-
-    then(onFulfilled, onRejected){
-    
-        if(onFulfilled && typeof onFulfilled == 'function') this.onFulfilledCallbacks.push(onFulfilled);
-        else this.onFulfilledCallbacks.push(null); // to keep the array's indexes in sync esp w.r.t promises array
-
-        if(onRejected && typeof onRejected == 'function') this.onRejectedCallbacks.push(onRejected);
-        else this.onRejectedCallbacks.push(null);
-
-        // Where the Magic happens: It's created as a function, so that it can be invoked ON-DEMAND with the values
-        const newPromise = (res,rej) => new TestPromise(function(resolve,reject){
-            if(res) resolve(res);
-            else reject(rej);
-        })
-        this.registeredPromises.push(newPromise);
-
-        if(status!='PENDING') {
-              //ToDo:: to call onFulfilled/onRejected only when execution call stack contains platform code
-              //Approach : By submitting it in microtask queue?
-
-              //ToDo: onFulfilled/onRejected must be called as functions without 'this'
-              //Approach : using strict as first line? also what about the this I'm using here for the sake of clarity?
-
-          //From 2.2.7.1 :: If either onFulfilled or onRejected returns a value x, run the Promise Resolution Procedure [[Resolve]](promise2, x)           
-          try{
-              let x;
-
-              if(status=='FULFILLED') { //since value can be undefined
-                if(!onFulfilled || typeof onFulfilled == 'function') x = onFulfilled(this.value);
-                else x= this.value;
-                
-                newPromise(x,null); // <-- this will run resolve() of newPromise
-              }
-              else {
-                if(!onRejected || typeof onRejected == 'function') {
-                  x = onRejected(this.reason);
-                  
-                  //From 2.2.7.1:: i.e if our root promise got rejected and the 'onRejected' callback was valid callback
-                  // we resolve the new promise.
-                  newPromise(x,null);// <-- this will run resolve() of newPromise
-                }else{
-                  //if our root promise got rejected and our 'onRejected' callback provided was invalid
-                  //we reject the new promise.
-                  newPromise(null,this.reason);
-                }
-             }
-            
-
-          }catch(error){
-            newPromise(null,error);
-          }finally{
-            this.onFulfilledCallbacks.pop();
-            this.onRejectedCallbacks.pop();
-            this.registeredPromises.pop();
-          }
-        }
-
-        return newPromise;
     }
 
     genericDeduce(x,resolutionType){
@@ -169,37 +113,109 @@ class TestPromise{
     }
 
     resolveCallbacks(){
-         for(let i=0; i<registeredPromises.length(); i++){
+         for(let i=0; i<this.deferreds.length(); i++){
         
-              let correspondingPromise = registeredPromises[i];
- 
+              // let correspondingPromise = registeredPromises[i];
+              let deferred = this.deferreds[i];
               let currentFulfillCallback = onFulfilledCallbacks[i];
               let currentRejectCallback = onRejectedCallbacks[i];
            
               try{
                 
                     if(this.status=='FULFILLED' && (!currentFulfillCallback || typeof currentFulfillCallback != 'function')) {
-                          correspondingPromise(this.value,null);// <-- fulfill the corresponding promise with the value directly(2.2.7.3)
+                          deferred.resolve(this.value);// <-- fulfill the corresponding promise with the value directly(2.2.7.3)
                     }else if(this.status=='REJECTED' && (!currentRejectCallback || typeof currentRejectCallback !='function')) {
-                          correspondingPromise(null,this.reason); // <-- reject the corresponding promise with reason directly(2.2.7.4)
+                          deferred.reject(this.reason); // <-- reject the corresponding promise with reason directly(2.2.7.4)
                     }else{
                       //ToDo:: When invoking any callback: to wait until execution stack is empty!!
                       //Approach : by submitting it in using microtaskqueue?
                       let result;
                       this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));
-                      correspondingPromise(result,null);// <-- fulfill the corresponding promise based on it's callback value since callback executed successfully
+                      deferred.resolve(result);// <-- fulfill the corresponding promise based on it's callback value since callback executed successfully
                    }
               }catch(error){
-                 correspondingPromise(null,error);// <-- reject if any error
+                deferred.reject(error);// <-- reject if any error
               }finally{
                 //cleanup of all registered callbacks and promises irrespective of it was fulfilled/rejected
+                this.deferreds.shift();
                 this.onFulfilledCallbacks.shift();
                 this.onRejectedCallbacks.shift();
                 this.registeredPromises.shift();
               }
            }
     }
+    
+    then(onFulfilled, onRejected){
+    
+      if(onFulfilled && typeof onFulfilled == 'function') this.onFulfilledCallbacks.push(onFulfilled);
+      else this.onFulfilledCallbacks.push(null); // to keep the array's indexes in sync esp w.r.t promises array
+
+      if(onRejected && typeof onRejected == 'function') this.onRejectedCallbacks.push(onRejected);
+      else this.onRejectedCallbacks.push(null);
+
+      // // Where the Magic happens: It's created as a function, so that it can be invoked ON-DEMAND with the values
+      // const newPromise = (res,rej) => new TestPromise(function(resolve,reject){
+      //     if(res) resolve(res);
+      //     else reject(rej);
+      // })
+
+      const newPromise = new TestPromise(function(resolve,reject){
+        
+        let d = {
+          'resolve': resolve,
+          'reject' : reject
+        }
+        deferreds.push(d);
+
+      });
+
+      this.registeredPromises.push(newPromise);
+
+      if(this.status!='PENDING') {
+            //ToDo:: to call onFulfilled/onRejected only when execution call stack contains platform code
+            //Approach : By submitting it in microtask queue?
+
+            //ToDo: onFulfilled/onRejected must be called as functions without 'this'
+            //Approach : using strict as first line? also what about the this I'm using here for the sake of clarity?
+
+        //From 2.2.7.1 :: If either onFulfilled or onRejected returns a value x, run the Promise Resolution Procedure [[Resolve]](promise2, x)           
+        try{
+            let d = this.deferreds[this.deferreds.length()-1];
+            let x;
+
+            if(status=='FULFILLED') { //since value can be undefined
+              if(!onFulfilled || typeof onFulfilled == 'function') x = onFulfilled(this.value);
+              else x= this.value;
+              
+              d.resolve(x); // <-- this will run resolve() of newPromise
+            }
+            else {
+              if(!onRejected || typeof onRejected == 'function') {
+                x = onRejected(this.reason);
+                
+                //From 2.2.7.1:: i.e if our root promise got rejected and the 'onRejected' callback was valid callback
+                // we resolve the new promise.
+                d.resolve(x);// <-- this will run resolve() of newPromise
+              }else{
+                //if our root promise got rejected and our 'onRejected' callback provided was invalid
+                //we reject the new promise.
+                d.reject(this.reason);
+              }
+           }
+          
+
+        }catch(error){
+          d.reject(error);
+        }finally{
+          this.deferreds.pop();
+          this.onFulfilledCallbacks.pop();
+          this.onRejectedCallbacks.pop();
+          this.registeredPromises.pop();
+        }
+      }
+
+      return newPromise;
+  }
 
 }
 
-module.exports = TestPromise;
