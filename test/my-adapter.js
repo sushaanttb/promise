@@ -13,16 +13,13 @@ const TestPromise = require ('../src/testPromise.js');
  exports.deferred = function(){
     
     let d={};
-  
-    let done = (resolve,reject) => {
-        d.resolve = resolve;
-        d.reject = reject;
-      }; 
-
-    const newPromise = new TestPromise(function(resolve,reject){
-        done(resolve,reject);
+ 
+    var newPromise = new Promise((resolve,reject)=>{
+      d.resolve = resolve;
+      d.reject = reject;
     });
     
     d.promise = newPromise; 
+    // console.log("From my-adapter.js, Printing keys of d::"+Object.keys(d));
     return d;
   }
