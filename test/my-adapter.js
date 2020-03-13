@@ -11,14 +11,18 @@ const TestPromise = require ('../src/testPromise.js');
   }
 
  exports.deferred = function(){
-    const newPromise = (res,rej) => new TestPromise(function(resolve,reject){
-        if(res) resolve(res);
-        else reject(rej);
+    
+    let d={};
+  
+    let done = (resolve,reject) => {
+        d.resolve = resolve;
+        d.reject = reject;
+      }; 
+
+    const newPromise = new TestPromise(function(resolve,reject){
+        done(resolve,reject);
     });
     
-    return {
-        'promise': newPromise,
-        'resolve': this.resolve,
-        'reject': this.reject
-    }
+    d.promise = newPromise; 
+    return d;
   }
