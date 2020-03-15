@@ -31,12 +31,12 @@ module.exports = class TestPromise{
       try{
               if(x instanceof TestPromise) x.then((v)=>this.resolve(v), (r) => this.reject(r)); //<-- adopting it's state
 
-              else if(typeof x == 'object'){
+              else if(typeof x === 'object'){
 
                    if(x.hasOwnProperty('then')){
                       let thenProperty = x.then;
 
-                      if(typeof thenProperty == 'function'){
+                      if(typeof thenProperty === 'function'){
                           //ToDo: to call it with this=x
                           //A: Although I believe it should be fine since by def. of it ,it is already val.then 
 
@@ -44,17 +44,17 @@ module.exports = class TestPromise{
                          const resolvePromise = (y) => {
                            if(invocationCnt++ >0) return; //oncifying attempt using closure : NEEDS to be tested.    
                                try{
-                                 this.resolve(y,null); // <-- fulfill
+                                 this.resolve(y); // <-- fulfill
                                }catch(error){
-                                 this.reject(null,error); // <-- reject with error
+                                 this.reject(error); // <-- reject with error
                                }
                           }
                          const rejectPromise = (r) => {
                            if(invocationCnt++ >0) return; //oncifying attempt using closure : NEEDS to be tested.
                              try{
-                                 this.reject(null,r); // <-- reject with reason
+                                 this.reject(r); // <-- reject with reason
                              }catch(error){
-                                 this.reject(null,error); // <-- reject with error
+                                 this.reject(error); // <-- reject with error
                              }
                           }
                           // TODO: when resolvePromise & rejectPromise are called at same time,ignored 2nd invocation
@@ -62,7 +62,7 @@ module.exports = class TestPromise{
                          // trick, still there can be a race condition and it would be great if they can work on a common
                          // invocationCnt variable.
                          
-                          thenProperty(resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
+                        thenProperty(resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
                           
                       }else{ // i.e. if it has a then property but it is not a function
                         this.updatePromiseStatus(x,resolutionType);
@@ -75,7 +75,7 @@ module.exports = class TestPromise{
                 this.updatePromiseStatus(x,resolutionType);     
               }
       }catch(error){
-          this.reject(null,error);
+          this.reject(error);
       }
   }
 
@@ -83,7 +83,7 @@ module.exports = class TestPromise{
     
     if(this.status=='FULFILLED' || this.status=='REJECTED') return;
       
-    if(resolutionType=='fulfill'){
+    if(resolutionType==='fulfill'){
        this.status='FULFILLED';
        this.value = x;
     }else{
