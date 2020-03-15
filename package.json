@@ -4,7 +4,7 @@
   "description": "",
   "main": "testPromise.js",
   "scripts": {
-    "test": "mocha && promises-aplus-tests test/my-adapter.js"
+    "test": "mocha && promises-aplus-tests test/my-adapter.js --reporter mochawesome"
   },
   "author": "",
   "license": "ISC",
@@ -12,6 +12,8 @@
     "promises-aplus-tests": "^2.1.2"
   },
   "devDependencies": {
-    "mocha": "^7.1.0"
+    "mocha": "^7.1.0",
+    "mochawesome": "^5.0.0",
+    "mochawesome-report-generator": "^4.1.0"
   }
 }
