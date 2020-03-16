@@ -40,6 +40,7 @@ module.exports = class TestPromise{
                           let invocationCnt = 0;
                           const resolvePromise = (y) => {
                             
+                            // console.log("In oncified resolvePromise,invocationCnt::"+invocationCnt);
                             if(invocationCnt++ >0) return; //oncifying attempt using closure : NEEDS to be tested.   
                             
                             // console.log("In oncified resolvePromise,invocationCnt::"+invocationCnt);
@@ -52,22 +53,26 @@ module.exports = class TestPromise{
                           const rejectPromise = (r) => {
 
                             if(invocationCnt++ >0) return; //oncifying attempt using closure : NEEDS to be tested.
-
                             // console.log("In oncified rejectPromise,invocationCnt::"+invocationCnt);
 
                               try{
-                                  this.reject(r); // <-- reject with reason
+                                 this.reject(r); // <-- reject with reason
                               }catch(error){
-                                  this.reject(error); // <-- reject with error
+                                 this.reject(error); // <-- reject with error
                               }
                             }
-                            // TODO: when resolvePromise & rejectPromise are called at same time,ignored 2nd invocation
+                          // TODO: when resolvePromise & rejectPromise are called at same time,ignored 2nd invocation
                           // A: although I believe the above oncify attempt & also the status checks in resolve/reject should do the
                           // trick, still there can be a race condition and it would be great if they can work on a common
                           // invocationCnt variable.
                           
-                          thenProperty(resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
-                            
+                          //handling 2.3.3.3.4: If calling `then` throws an exception `e`
+                          try{
+                            thenProperty(resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
+                          }catch(error){
+                            if(this.status=='PENDING') this.reject(error);
+                          }
+
                         }else{ // i.e. if it has a then property but it is not a function
                           this.updatePromiseStatus(x,resolutionType);
                         }
