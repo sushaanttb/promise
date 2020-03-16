@@ -68,8 +68,9 @@ module.exports = class TestPromise{
                           
                           //handling 2.3.3.3.4: If calling `then` throws an exception `e`
                           try{
-                            thenProperty(resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
+                            thenProperty.call(x,resolvePromise,rejectPromise);// <-- calling then function with the above created oncified functions
                           }catch(error){
+                            //if in the then callback it already resolved once, we need to ignore if there was any error afterwards
                             if(this.status=='PENDING') this.reject(error);
                           }
 
