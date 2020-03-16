@@ -28,11 +28,15 @@ module.exports = class TestPromise{
 
   genericDeduce=(x,resolutionType)=>{
       //From spec 2.3, as per promise resolution procedure 
+      // console.log("genericDeduce called with x:: " + x + "  resolutionType::"+resolutionType);
       try{
-              if(x instanceof TestPromise) x.then((v)=>this.resolve(v), (r) => this.reject(r)); //<-- adopting it's state
-
+              if(!x) this.updatePromiseStatus(x,resolutionType); 
+              else if(x instanceof TestPromise) x.then((v)=>this.resolve(v), (r) => this.reject(r)); //<-- adopting it's state
               else if(typeof x === 'object'){
 
+                // console.log("In genericDeduce when x is object x:: " + x );
+                // console.log("In genericDeduce when x is object x:: "+x+" has then?:: " + x.hasOwnProperty('then'));
+                
                    if(x.hasOwnProperty('then')){
                       let thenProperty = x.then;
 
@@ -90,6 +94,8 @@ module.exports = class TestPromise{
        this.status='REJECTED';
        this.reason = x;
     }
+
+    // console.log("In updatePromiseStatus, (x,resolutionType):: ("+ JSON.stringify(x)+ ", "+resolutionType+")");
   }
 
   resolveCallbacks=()=>{
@@ -128,7 +134,7 @@ module.exports = class TestPromise{
     //ToDo:: to make it private
     resolve=(val)=>{
       // console.log("In resolve, this::"+JSON.stringify(this));
-      // console.log("resolve called with::"+JSON.stringify(val));
+      // console.log("resolve called with::"+val);
       
       if (this.status=='FULFILLED') return;
       if (val===this) return this.reject(TypeError("resolution value can't be the same promise!")); //(From the Spec,2.3.1)
@@ -188,16 +194,20 @@ module.exports = class TestPromise{
             //Approach : using strict as first line? also what about the this I'm using here for the sake of clarity?
 
         //From 2.2.7.1 :: If either onFulfilled or onRejected returns a value x, run the Promise Resolution Procedure [[Resolve]](promise2, x)           
-        // console.log("this.deferreds.length::" + this.deferreds.length);        
         let d = this.deferreds[this.deferreds.length-1];
-        // console.log("d::" + JSON.stringify(d));
+
         try{
             
             let x;
+            // console.log("In then(),when root promise is already Resolved status:: "+ this.status);
 
             if(this.status=='FULFILLED') { //since value can be undefined
+              // console.log("In then(),value when root promise is FULFILLED value:: "+ JSON.stringify(this.value) + " isNull?:: "+(this.value==null));
+
               if(!onFulfilled || typeof onFulfilled == 'function') x = onFulfilled(this.value);
               else x= this.value;
+
+              // console.log("In then(),x when root promise is FULFILLED x:: "+ x);
               
               d.resolve(x); // <-- this will run resolve() of newPromise
             }
