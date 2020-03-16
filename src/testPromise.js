@@ -121,7 +121,17 @@ module.exports = class TestPromise{
                       //ToDo:: When invoking any callback: to wait until execution stack is empty!!
                       //Approach : by submitting it in using microtaskqueue?
                       let result;
-                      this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));
+                      // this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));
+                      if(this.status=='FULFILLED'){
+                        queueMicrotask(() => {
+                          result = currentFulfillCallback(this.value);
+                        });
+                      }else{
+                        queueMicrotask(() => {
+                          result = currentRejectCallback(this.reason);
+                        });
+                      }
+                      
                       deferred.resolve(result);// <-- fulfill the corresponding promise based on it's callback value since callback executed successfully
                   }
               }catch(error){
@@ -212,7 +222,11 @@ module.exports = class TestPromise{
 
               // console.log("In then(),when root promise is FULFILLED onFulfilled:: "+ onFulfilled);
              
-              if(typeof onFulfilled === 'function') x = onFulfilled(this.value);
+              if(typeof onFulfilled === 'function') {
+                queueMicrotask(() => {
+                  x = onFulfilled(this.value);
+                });  
+              }
               else x= this.value;
 
               // if(x==d)  return d.reject(new TypeError("resolution value can't be the same promise!"));
@@ -224,8 +238,10 @@ module.exports = class TestPromise{
             else {
               
               if(typeof onRejected === 'function') {
-                x = onRejected(this.reason);
-
+                
+                queueMicrotask(() => {
+                  x = onRejected(this.reason);
+                });
                 // if(x==d)  return d.reject(new TypeError(this.reason));
 
                 //From 2.2.7.1:: i.e if our root promise got rejected and the 'onRejected' callback was valid callback
