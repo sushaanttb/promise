@@ -20,7 +20,7 @@ module.exports = class TestPromise{
         try{
                 if(!x) this.updatePromiseStatus(x,resolutionType);
                 else if(x instanceof TestPromise) x.then((v)=>this.resolve(v), (r) => this.reject(r)); //<-- adopting it's state
-                else if(typeof x === 'object'){
+                else if(typeof x === 'object' || typeof x === 'function'){// <-- typeof x === 'function' check is based from tests.
               
                     if(Object.prototype.hasOwnProperty.call(x, 'then')){
                         let thenProperty = x.then;
@@ -54,7 +54,8 @@ module.exports = class TestPromise{
                             thenProperty.call(x,resolvePromise,rejectPromise);
                           }catch(error){
                             //if in the then callback it already resolved once, we need to ignore if there was any error afterwards
-                            if(this.status=='PENDING') this.reject(error);
+                            //added check of invocationCnt==0 ,to detect multiple invocations to then() TC: 2.3.3.3.4.1, `resolvePromise` was called with an asynchronously-fulfilled promise
+                            if(this.status=='PENDING' && invocationCnt==0) this.reject(error);
                           }
 
                         }else{ // i.e. if it has a then property but it is not a function
@@ -85,12 +86,13 @@ module.exports = class TestPromise{
     }
 
     resolveCallbacks=()=>{
+
         for(let i=0; i<this.deferreds.length; i++){
-        
+
               let deferred = this.deferreds[i];
               let currentFulfillCallback = this.onFulfilledCallbacks[i];
               let currentRejectCallback = this.onRejectedCallbacks[i];
-          
+
               try{
                 
                     if(this.status=='FULFILLED' && (!currentFulfillCallback || typeof currentFulfillCallback != 'function')) {
@@ -98,19 +100,28 @@ module.exports = class TestPromise{
                     }else if(this.status=='REJECTED' && (!currentRejectCallback || typeof currentRejectCallback !='function')) {
                           deferred.reject(this.reason); // <-- reject the corresponding promise with reason directly(2.2.7.4)
                     }else{
-                      //ToDo:: When invoking any callback: to wait until execution stack is empty!!
-                      //Approach : by submitting it in using microtaskqueue?
+      
                       let result;
-                      this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));
-                      deferred.resolve(result);
+                        // 2.2.4, onFulfilled or onRejected must not be called until the execution context stack contains only platform code
+                        setTimeout(()=>{
+                        
+                          try{
+                            this.status=='FULFILLED'? (result = currentFulfillCallback(this.value)) : (result = currentRejectCallback(this.reason));  
+                            deferred.resolve(result);
+                          }catch(error){
+                            deferred.reject(error);
+                          }
+                        },0);
+                          
                   }
               }catch(error){
                 deferred.reject(error);
               }finally{
-                this.deferreds.shift();
-                this.onFulfilledCallbacks.shift();
-                this.onRejectedCallbacks.shift();
-                this.registeredPromises.shift();
+                this.deferreds.splice(i,1);
+                this.onFulfilledCallbacks.splice(i,1);
+                this.onRejectedCallbacks.splice(i,1);
+                this.registeredPromises.splice(i,1);
+                i--;
               }
           }
     }
@@ -118,10 +129,11 @@ module.exports = class TestPromise{
     //ToDo:: to make it private
     resolve=(val)=>{
       
-      if (this.status=='FULFILLED') return;
+      if (this.status!='PENDING') return;
       if (val===this) return this.reject(new TypeError("resolution value can't be the same promise!")); //(From the Spec,2.3.1)
 
       this.genericDeduce(val,'fulfill');
+      // console.log("Resolve called with val::"+ JSON.stringify(val) +" , Promise "+this.status +" with value:: "+JSON.stringify(this.value));
       
       //since this.value can be undefined
       if(this.status=='FULFILLED') this.resolveCallbacks();
@@ -131,13 +143,11 @@ module.exports = class TestPromise{
     //ToDo:: to make it private
     reject=(rsn)=>{
 
-      if(this.status=='REJECTED') return;
+      if (this.status!='PENDING') return;
       if (rsn===this) return this.reject(new TypeError("rejection reason can't be the same promise!")); //(From the Spec ,2.3.1)
 
       this.status = 'REJECTED';
-      this.reason = rsn; //Q: do we need same promise/thenable checks? A: yes
-
-      // this.genericDeduce(rsn,'reject');
+      this.reason = rsn; 
       
       //since this.reason can be undefined
       if(this.status=='REJECTED') this.resolveCallbacks();
@@ -152,6 +162,7 @@ module.exports = class TestPromise{
       if(onRejected && typeof onRejected === 'function') this.onRejectedCallbacks.push(onRejected);
       else this.onRejectedCallbacks.push(undefined);
 
+
       let res = null,rej = null;
       const newPromise = new TestPromise((resolve,reject)=>{
         this.res = resolve;
@@ -161,12 +172,7 @@ module.exports = class TestPromise{
       this.registeredPromises.push(newPromise);
 
       if(this.status!='PENDING') {
-            //ToDo:: to call onFulfilled/onRejected only when execution call stack contains platform code
-            //Approach : By submitting it in microtask queue?
-
-            //ToDo: onFulfilled/onRejected must be called as functions without 'this'
-            //Approach : using strict as first line? also what about the this I'm using here for the sake of clarity?
-
+      
         //From 2.2.7.1 :: If either onFulfilled or onRejected returns a value x, run the Promise Resolution Procedure [[Resolve]](promise2, x)           
         let d = this.deferreds[this.deferreds.length-1];
 
@@ -174,26 +180,42 @@ module.exports = class TestPromise{
             
             let x;
             if(this.status=='FULFILLED') { //since value can be undefined
-             
-              if(typeof onFulfilled === 'function') x = onFulfilled(this.value);
-              else x= this.value;
+            
+              // 2.2.4, onFulfilled or onRejected must not be called until the execution context stack contains only platform code
+              setTimeout(()=>{
+               try{
+                  if(typeof onFulfilled === 'function') x = onFulfilled(this.value);
+                  else x= this.value;
 
-              d.resolve(x);
+                  d.resolve(x);
+                }catch(error){
+                  d.reject(error);
+                }
+              },0);
+
             }
             else {
               
               if(typeof onRejected === 'function') {
-                x = onRejected(this.reason);
+                
+                // 2.2.4, onFulfilled or onRejected must not be called until the execution context stack contains only platform code
+                setTimeout(()=>{
+                    try{
+                      x = onRejected(this.reason);
+                      d.resolve(x);
+                    }catch(error){
+                      d.reject(error);
+                    }
+                    
+                },0);
 
-                //From 2.2.7.1:: i.e if our root promise got rejected and the 'onRejected' callback was valid callback
-                // we resolve the new promise.
-                d.resolve(x);
+         
               }else{
                 //if our root promise got rejected and our 'onRejected' callback provided was invalid
                 //we reject the new promise.
                 d.reject(this.reason);
               }
-           }
+          }
           
         }catch(error){
           d.reject(error);
