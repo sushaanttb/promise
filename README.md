@@ -3,11 +3,10 @@ A simple Promise implementation based on Promise A+spec
 https://promisesaplus.com/
 
 
-Major milestones:
+#Major milestones:
 1. Starting with defining the constructor of new promise to be returned from then
 Initially coded it as function(was able to figure out when checking 1 of promises tutorial and playing around in actual code editor rather than pseudo-code) and then later realized I am not returning an object but
-a function def. 
-This was realized when writing the test adapter in which deferred object needs to have resolve and reject functions both.
+a function def. This was realized when writing the test adapter in which deferred object needs to have resolve and reject functions both.
 
 Fixed this post pondering upon this later that we can do this by storing the callback references defined outside the scope of that function
 
