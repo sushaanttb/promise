@@ -12,7 +12,7 @@
     "promises-aplus-tests": "^2.1.2"
   },
   "devDependencies": {
-    "mocha": "^7.1.0",
+    "mocha": "^10.2.0",
     "mochawesome": "^5.0.0",
     "mochawesome-report-generator": "^4.1.0"
   }
